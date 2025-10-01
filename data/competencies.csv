@@ -1,0 +1,24 @@
+CompetencyID,CompetencyText,BlockID,BlockName
+C01,Data cleaning,1,Data Analysis
+C02,Data visualization,1,Data Analysis
+C03,Python programming,1,Data Analysis
+C04,SQL queries,1,Data Analysis
+C05,Dashboards,1,Data Analysis
+C06,Exploratory data analysis,1,Data Analysis
+C07,Statistics,1,Data Analysis
+C08,Model evaluation,2,Machine Learning
+C09,Classification,2,Machine Learning
+C10,Regression,2,Machine Learning
+C11,Cross-validation,2,Machine Learning
+C12,Hyperparameter tuning,2,Machine Learning
+C13,Neural networks,2,Machine Learning
+C14,Deep learning,2,Machine Learning
+C15,Text preprocessing,3,NLP
+C16,Tokenization,3,NLP
+C17,Lemmatization,3,NLP
+C18,Named entity recognition,3,NLP
+C19,Word embeddings,3,NLP
+C20,Transformers,3,NLP
+C21,Semantic similarity,3,NLP
+C28,Stakeholder communication,4,Project Management
+C29,Requirements gathering,4,Project Management
