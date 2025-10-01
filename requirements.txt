@@ -1,1 +1,7 @@
-streamlit\npandas\nnumpy\nsentence-transformers\nscikit-learn\nplotly\nmatplotlib
+streamlit
+pandas
+numpy
+sentence-transformers
+scikit-learn
+plotly
+matplotlib
