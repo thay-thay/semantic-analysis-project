@@ -5,3 +5,4 @@ sentence-transformers
 scikit-learn
 plotly
 matplotlib
+torch
