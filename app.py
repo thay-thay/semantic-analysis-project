@@ -52,7 +52,7 @@ st.markdown("""
 
 # === GitHub Configuration ===
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", "")  # À configurer dans Streamlit secrets
-GITHUB_REPO = "Amik24/semantic-analysis-project"
+GITHUB_REPO = "thay-thay/semantic-analysis-project"  # Ton repo fork
 FILE_PATH = "data/user_responses.csv"
 
 def append_to_github_csv(new_response):
