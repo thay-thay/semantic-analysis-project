@@ -170,3 +170,43 @@ with st.form("skills_form"):
             df.to_csv("responses.csv", index=False)
             st.success("✅ Your responses have been successfully saved!")
             st.balloons()
+
+    # === Submit Button ===
+    submitted = st.form_submit_button("Submit")
+
+    if submitted:
+        # Vérifier les champs obligatoires
+        required_fields = {
+            "First Name": first_name,
+            "Last Name": last_name,
+            "Programming": prog_text,
+            "Data Analysis": data_text,
+            "ML Projects": ml_text,
+            "ML Problem": ml_problem_text,
+            "NLP": nlp_text,
+            "Data Pipeline": pipeline_text,
+            "Sharing Results": sharing_text,
+            "Reflection": reflection_text
+        }
+
+        empty_fields = [name for name, value in required_fields.items() if not value or value.strip() == ""]
+
+        if empty_fields:
+            st.warning(f"⚠️ Please fill in all the required fields before submitting: {', '.join(empty_fields)}")
+        else:
+            # Préparer les réponses
+            responses = {
+                "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "First_Name": first_name,
+                "Last_Name": last_name,
+                "Programming": prog_text,
+                "Data_Analysis": data_text,
+                "ML_Projects": ml_text,
+                "ML_Problem": ml_problem_text,
+                "NLP": nlp_text,
+                "Data_Pipeline": pipeline_text,
+                "Sharing_Results": sharing_text,
+                "Git_Level": git_level,
+                "Presentation_Level": presentation_level,
+                "Reflection": reflection_text
+            }
