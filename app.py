@@ -68,38 +68,31 @@ def append_to_github_csv(new_response):
         "Accept": "application/vnd.github.v3+json"
     }
     
-    # 1. Récupérer le fichier actuel
     url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{FILE_PATH}"
     
     try:
         response = requests.get(url, headers=headers)
         
         if response.status_code == 200:
-            # Le fichier existe
             file_data = response.json()
             content = base64.b64decode(file_data['content']).decode('utf-8')
             sha = file_data['sha']
             
-            # Lire le CSV existant
             from io import StringIO
             existing_df = pd.read_csv(StringIO(content))
             
-            # Ajouter la nouvelle ligne
             new_df = pd.concat([existing_df, pd.DataFrame([new_response])], ignore_index=True)
             
         elif response.status_code == 404:
-            # Le fichier n'existe pas encore, créer un nouveau DataFrame
             new_df = pd.DataFrame([new_response])
             sha = None
         else:
             st.error(f"❌ Error fetching file: {response.status_code}")
             return False
         
-        # 2. Convertir le DataFrame en CSV
         csv_content = new_df.to_csv(index=False)
         encoded_content = base64.b64encode(csv_content.encode()).decode()
         
-        # 3. Mettre à jour le fichier sur GitHub
         commit_data = {
             "message": f"Add response from {new_response['First_Name']} {new_response['Last_Name']}",
             "content": encoded_content,
@@ -122,7 +115,14 @@ def append_to_github_csv(new_response):
         st.error(f"❌ Exception occurred: {str(e)}")
         return False
 
-# === Header (no logo) ===
+
+# === Header with centered logo ===
+st.markdown("""
+<div style="text-align:center;">
+    <img src="https://raw.githubusercontent.com/thay-thay/semantic-analysis-project/main/data/ECE_LOGO_2021_web.png" width="220">
+</div>
+""", unsafe_allow_html=True)
+
 st.markdown("""
 <div>
     <div class="header-title">Project – Semantic Analysis</div>
@@ -134,11 +134,9 @@ st.markdown("---")
 
 # === Form ===
 with st.form("skills_form"):
-    # === Basic Info ===
     first_name = st.text_input("First Name", placeholder="Enter your first name")
     last_name = st.text_input("Last Name", placeholder="Enter your last name")
 
-    # === Questions ===
     prog_text = st.text_area(
         "Describe your experience with programming. What languages or tools have you used most?",
         placeholder="Ex: I mostly use Python and SQL, and I work with Git and OOP concepts."
@@ -174,7 +172,6 @@ with st.form("skills_form"):
         placeholder="Ex: I create dashboards, visualizations, and prepare presentations to explain insights."
     )
 
-    # === Sliders ===
     col1, col2 = st.columns(2)
     with col1:
         git_level = st.slider(
@@ -194,11 +191,9 @@ with st.form("skills_form"):
         placeholder="Ex: Strong problem-solving, communication skills, and mastery of tools."
     )
 
-    # === Submit ===
     submitted = st.form_submit_button("Submit")
 
     if submitted:
-        # Vérifier les champs obligatoires
         required_fields = {
             "First Name": first_name,
             "Last Name": last_name,
@@ -217,7 +212,6 @@ with st.form("skills_form"):
         if empty_fields:
             st.warning(f"⚠️ Please fill in all the required fields before submitting: {', '.join(empty_fields)}")
         else:
-            # Créer le dictionnaire avec les réponses
             responses = {
                 "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "First_Name": first_name,
@@ -234,7 +228,6 @@ with st.form("skills_form"):
                 "Reflection": reflection_text
             }
 
-            # Sauvegarder sur GitHub
             with st.spinner("Saving your responses to GitHub..."):
                 success = append_to_github_csv(responses)
             
@@ -242,7 +235,6 @@ with st.form("skills_form"):
                 st.success(f"✅ Thank you {first_name}! Your responses have been submitted successfully to GitHub.")
                 st.balloons()
 
-                # === Display the responses ===
                 st.markdown("### 📋 Your Submitted Responses:")
                 df = pd.DataFrame([responses])
                 st.dataframe(df)
