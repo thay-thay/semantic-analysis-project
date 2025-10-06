@@ -2,13 +2,16 @@ JobID,JobTitle,CompetencyID
 J01,Data Analyst,C01
 J01,Data Analyst,C02
 J01,Data Analyst,C03
+J01,Data Analyst,C04
 J01,Data Analyst,C05
 J01,Data Analyst,C06
 J01,Data Analyst,C07
+J01,Data Analyst,C28
 J02,Machine Learning Engineer,C03
 J02,Machine Learning Engineer,C05
 J02,Machine Learning Engineer,C08
 J02,Machine Learning Engineer,C09
+J02,Machine Learning Engineer,C10
 J02,Machine Learning Engineer,C11
 J02,Machine Learning Engineer,C12
 J02,Machine Learning Engineer,C13
@@ -16,22 +19,31 @@ J02,Machine Learning Engineer,C14
 J03,Data Scientist,C01
 J03,Data Scientist,C02
 J03,Data Scientist,C03
+J03,Data Scientist,C04
 J03,Data Scientist,C05
 J03,Data Scientist,C06
 J03,Data Scientist,C08
 J03,Data Scientist,C09
+J03,Data Scientist,C10
 J03,Data Scientist,C11
 J03,Data Scientist,C12
 J03,Data Scientist,C15
 J03,Data Scientist,C18
+J03,Data Scientist,C19
 J03,Data Scientist,C22
 J03,Data Scientist,C23
 J03,Data Scientist,C24
+J03,Data Scientist,C28
 J04,NLP Engineer,C03
 J04,NLP Engineer,C05
 J04,NLP Engineer,C08
 J04,NLP Engineer,C15
+J04,NLP Engineer,C16
+J04,NLP Engineer,C17
 J04,NLP Engineer,C18
+J04,NLP Engineer,C19
+J04,NLP Engineer,C20
+J04,NLP Engineer,C21
 J04,NLP Engineer,C22
 J04,NLP Engineer,C23
 J04,NLP Engineer,C24
@@ -39,6 +51,7 @@ J04,NLP Engineer,C25
 J04,NLP Engineer,C26
 J04,NLP Engineer,C27
 J05,Data Engineer,C03
+J05,Data Engineer,C04
 J05,Data Engineer,C05
 J05,Data Engineer,C29
 J05,Data Engineer,C30
