@@ -9,7 +9,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# === Custom CSS for modern font, colors, slider ===
+# === Custom CSS for modern font, colors, and sliders ===
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
@@ -37,6 +37,7 @@ st.markdown("""
         .stButton>button {
             background-color: #017179;
             color: white;
+            border-radius: 8px;
         }
 
         /* Remove slider label above (tooltip only remains) */
@@ -46,7 +47,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# === Header without logo ===
+# === Header (without logo) ===
 st.markdown("""
 <div>
     <div class="header-title">Project – Semantic Analysis</div>
@@ -56,11 +57,13 @@ st.markdown("""
 
 st.markdown("---")
 
-# === Form ===
+# === Form Section ===
 with st.form("skills_form"):
+    # === Basic Info ===
     first_name = st.text_input("First Name", placeholder="Enter your first name")
     last_name = st.text_input("Last Name", placeholder="Enter your last name")
 
+    # === Experience Questions ===
     prog_text = st.text_area(
         "Describe your experience with programming. What languages or tools have you used most?",
         placeholder="Ex: I mostly use Python and SQL, and I work with Git and OOP concepts."
@@ -96,6 +99,7 @@ with st.form("skills_form"):
         placeholder="Ex: I create dashboards, visualizations, and prepare presentations to explain insights."
     )
 
+    # === Sliders ===
     col1, col2 = st.columns(2)
     with col1:
         git_level = st.slider(
@@ -110,14 +114,17 @@ with st.form("skills_form"):
             help="1 = Beginner / Weak, 5 = Expert / Strong"
         )
 
+    # === Reflection ===
     reflection_text = st.text_area(
         "In your opinion, what makes someone a strong Data Scientist / Engineer?",
         placeholder="Ex: Strong problem-solving, communication skills, and mastery of tools."
     )
 
+    # === Submit Button ===
     submitted = st.form_submit_button("Submit")
 
     if submitted:
+        # Vérifier les champs obligatoires
         required_fields = {
             "First Name": first_name,
             "Last Name": last_name,
@@ -151,12 +158,15 @@ with st.form("skills_form"):
                 "Presentation_Level": presentation_level,
                 "Reflection": reflection_text
             }
+
+            # === Save to CSV ===
             df = pd.DataFrame([responses])
             try:
                 existing_df = pd.read_csv("responses.csv")
                 df = pd.concat([existing_df, df], ignore_index=True)
             except FileNotFoundError:
                 pass
+
             df.to_csv("responses.csv", index=False)
             st.success("✅ Your responses have been successfully saved!")
             st.balloons()
