@@ -1,3 +1,4 @@
-response
-I worked with Python and SQL for analytics
-I used Power BI for dashboards and some NLP as well as data visualization
+response,Timestamp,First_Name,Last_Name,Programming,Data_Analysis,ML_Projects,ML_Problem,NLP,Data_Pipeline,Sharing_Results,Git_Level,Presentation_Level,Reflection
+I worked with Python and SQL for analytics,,,,,,,,,,,,,
+I used Power BI for dashboards and some NLP as well as data visualization,,,,,,,,,,,,,
+,2025-10-06 16:00:11,TEST,CSV,a,A,A,A,A,A,A,3.0,3.0,A
