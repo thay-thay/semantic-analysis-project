@@ -30,10 +30,6 @@ st.markdown("""
             margin-bottom: 20px;
         }
 
-        .logo {
-            width: 120px;
-        }
-
         .stTextArea, .stSlider, .stTextInput {
             font-size: 16px;
         }
@@ -50,16 +46,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# === Header with logo ===
+# === Header without logo ===
 st.markdown("""
-<div style="display:flex; align-items:center; justify-content: space-between;">
-    <div>
-        <div class="header-title">Project – Semantic Analysis</div>
-        <div class="header-subtitle">Semantic Analysis for Competency Mapping and Job Profile Recommendation</div>
-    </div>
-    <div>
-        <img class="logo" src="https://upload.wikimedia.org/wikipedia/commons/1/1e/ECE_LOGO_2021_web.png" alt="ECE Paris Logo">
-    </div>
+<div>
+    <div class="header-title">Project – Semantic Analysis</div>
+    <div class="header-subtitle">Semantic Analysis for Competency Mapping and Job Profile Recommendation</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -67,11 +58,9 @@ st.markdown("---")
 
 # === Form ===
 with st.form("skills_form"):
-    # Section Nom / Prénom
     first_name = st.text_input("First Name", placeholder="Enter your first name")
     last_name = st.text_input("Last Name", placeholder="Enter your last name")
 
-    # Questions visibles directement
     prog_text = st.text_area(
         "Describe your experience with programming. What languages or tools have you used most?",
         placeholder="Ex: I mostly use Python and SQL, and I work with Git and OOP concepts."
@@ -107,7 +96,6 @@ with st.form("skills_form"):
         placeholder="Ex: I create dashboards, visualizations, and prepare presentations to explain insights."
     )
 
-    # Sliders
     col1, col2 = st.columns(2)
     with col1:
         git_level = st.slider(
@@ -127,11 +115,9 @@ with st.form("skills_form"):
         placeholder="Ex: Strong problem-solving, communication skills, and mastery of tools."
     )
 
-    # ===== Submit Button (inside the form!) =====
     submitted = st.form_submit_button("Submit")
 
     if submitted:
-        # Vérifier les champs obligatoires
         required_fields = {
             "First Name": first_name,
             "Last Name": last_name,
