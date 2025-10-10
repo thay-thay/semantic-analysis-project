@@ -93,116 +93,285 @@ FILE_PATH = "user_responses.csv"
 
 # === Semantic Analysis Configuration ===
 MODEL_NAME = "all-mpnet-base-v2"
-MODE = "avg"
-TOP_K = 3
 DATA_DIR = Path("data")
-OUT_DIR = Path("outputs")
 
-CANONICAL_TEXT_FIELDS = [
-    "Programming", "Data_Analysis", "ML_Projects", "ML_Problem",
-    "NLP", "Data_Pipeline", "Sharing_Results", "Reflection",
-]
+# Mapping des champs du formulaire vers les QuestionIDs
+QUESTION_MAPPING = {
+    "Programming": "Q01",
+    "Data_Analysis": "Q02",
+    "ML_Projects": "Q03",
+    "ML_Problem": "Q04",
+    "NLP": "Q05",
+    "Data_Pipeline": "Q06",
+    "Sharing_Results": "Q07",
+    "Git_Level": "Q08",
+    "Presentation_Level": "Q09",
+    "Reflection": "Q10"
+}
 
 @st.cache_resource
 def load_model():
-    """Cache le modèle SBERT pour éviter de le recharger à chaque fois"""
+    """Cache le modèle SBERT"""
     return SentenceTransformer(MODEL_NAME)
 
 @st.cache_data
 def load_reference_data():
-    """Cache les données de référence (compétences et jobs)"""
-    comp_path = DATA_DIR / "competencies.csv"
-    jobs_path = DATA_DIR / "job_skills.csv"
+    """Cache les données de référence"""
+    competencies = pd.read_csv(DATA_DIR / "competencies.csv")
+    job_skills = pd.read_csv(DATA_DIR / "job_skills.csv")
+    job_weights = pd.read_csv(DATA_DIR / "job_weights.csv")
+    questions = pd.read_csv(DATA_DIR / "questions.csv")
     
-    competencies = pd.read_csv(comp_path)
-    jobs_long = pd.read_csv(jobs_path)
-    
-    competencies.columns = competencies.columns.str.strip()
-    jobs_long.columns = jobs_long.columns.str.strip()
-    
-    jobs = (
-        jobs_long
-        .groupby(["JobID", "JobTitle"])["CompetencyID"]
-        .apply(list)
-        .reset_index()
-        .rename(columns={"CompetencyID": "RequiredCompetencies"})
-    )
-    
-    return competencies, jobs
+    return competencies, job_skills, job_weights, questions
 
-def run_semantic_analysis(user_response_dict):
-    """
-    Exécute l'analyse sémantique pour une seule réponse utilisateur
-    """
+@st.cache_data
+def precompute_competency_embeddings(_model, competencies_df):
+    """Précompute les embeddings des compétences"""
+    embeddings = {}
+    for _, row in competencies_df.iterrows():
+        comp_id = row['CompetencyID']
+        comp_text = row['CompetencyText']
+        embedding = _model.encode(comp_text, convert_to_tensor=True)
+        embeddings[comp_id] = embedding
+    return embeddings
+
+def analyze_single_response_semantic(question_id, user_response, response_type, 
+                                     model, competency_embeddings):
+    """Analyse une réponse utilisateur (version du notebook)"""
+    
+    # Handle Likert scale questions
+    if response_type == 'likert':
+        try:
+            likert_score = float(user_response) / 5.0
+            return {comp_id: likert_score * 0.3 for comp_id in competency_embeddings.keys()}
+        except:
+            return {comp_id: 0.0 for comp_id in competency_embeddings.keys()}
+    
+    # Handle text responses
+    elif response_type == 'text':
+        if not user_response or len(str(user_response).strip()) < 5:
+            return {comp_id: 0.0 for comp_id in competency_embeddings.keys()}
+
+        user_embedding = model.encode(str(user_response), convert_to_tensor=True)
+
+        comp_scores = {}
+        for comp_id, comp_embedding in competency_embeddings.items():
+            semantic_sim = util.cos_sim(user_embedding, comp_embedding).item()
+            semantic_sim = max(0.0, semantic_sim)
+            comp_scores[comp_id] = semantic_sim
+
+        return comp_scores
+    
+    return {}
+
+def analyze_all_responses_weighted(user_responses, questions_df, model, 
+                                   competency_embeddings, question_weights=None):
+    """Analyse toutes les réponses avec pondération (version du notebook)"""
+    
+    if question_weights is None:
+        question_weights = {
+            'Q01': 1.0,
+            'Q02': 1.2,
+            'Q03': 1.5,
+            'Q04': 1.2,
+            'Q05': 1.5,
+            'Q06': 1.3,
+            'Q07': 1.0,
+            'Q08': 0.5,
+            'Q09': 0.5,
+            'Q10': 0.7
+        }
+    
+    all_comp_scores = {}
+    comp_weights = {}
+
+    for question_id, answer in user_responses.items():
+        question_row = questions_df[questions_df['QuestionID'] == question_id]
+
+        if question_row.empty:
+            continue
+
+        response_type = question_row.iloc[0]['Type']
+        q_weight = question_weights.get(question_id, 1.0)
+
+        comp_scores = analyze_single_response_semantic(
+            question_id, answer, response_type, model, competency_embeddings
+        )
+
+        for comp_id, score in comp_scores.items():
+            if comp_id not in all_comp_scores:
+                all_comp_scores[comp_id] = 0.0
+                comp_weights[comp_id] = 0.0
+            
+            all_comp_scores[comp_id] += score * q_weight
+            comp_weights[comp_id] += q_weight
+    
+    # Compute weighted average
+    for comp_id in all_comp_scores:
+        if comp_weights[comp_id] > 0:
+            all_comp_scores[comp_id] /= comp_weights[comp_id]
+        else:
+            all_comp_scores[comp_id] = 0.0
+
+    return all_comp_scores
+
+def compute_block_scores(competency_scores, competencies_df):
+    """Calcule les scores par bloc (version du notebook)"""
+    block_scores = {}
+    block_counts = {}
+
+    for comp_id, score in competency_scores.items():
+        comp_row = competencies_df[competencies_df['CompetencyID'] == comp_id]
+
+        if comp_row.empty:
+            continue
+
+        block_name = comp_row.iloc[0]['BlockName']
+        if block_name not in block_scores:
+            block_scores[block_name] = 0.0
+            block_counts[block_name] = 0
+        
+        block_scores[block_name] += score
+        block_counts[block_name] += 1
+    
+    for block in block_scores:
+        if block_counts[block] > 0:
+            block_scores[block] /= block_counts[block]
+        else:
+            block_scores[block] = 0.0
+    
+    return block_scores
+
+def compute_job_scores_weighted(competency_scores, job_skills_df, 
+                               job_weights_df, competencies_df):
+    """Calcule les scores des jobs avec pondération (version du notebook)"""
+    
+    job_results = []
+
+    for job_id in job_skills_df['JobID'].unique():
+        job_rows = job_skills_df[job_skills_df['JobID'] == job_id]
+        job_title = job_rows.iloc[0]['JobTitle']
+        required_comps = job_rows['CompetencyID'].tolist()
+
+        job_weight_rows = job_weights_df[job_weights_df['JobID'] == job_id]
+        block_weights = dict(zip(job_weight_rows['BlockName'], job_weight_rows['BlockWeight']))
+
+        weighted_score = []
+        weights = []
+        matched_scores = []
+
+        for comp_id in required_comps:
+            comp_row = competencies_df[competencies_df['CompetencyID'] == comp_id]
+            if comp_row.empty:
+                continue
+            
+            block_name = comp_row.iloc[0]['BlockName']
+            block_weight = block_weights.get(block_name, 1.0)
+
+            score = competency_scores.get(comp_id, 0.0)
+            matched_scores.append(score)
+
+            weighted_score.append(score * block_weight)
+            weights.append(block_weight)
+        
+        if sum(weights) > 0:
+            job_score = sum(weighted_score) / sum(weights)
+        else:
+            job_score = 0.0
+
+        total_required = len(required_comps)
+        covered_count = sum(1 for s in matched_scores if s >= 0.22)
+        coverage_pct = (covered_count / total_required) * 100 if total_required > 0 else 0.0
+
+        details = {
+            'required_competencies': total_required,
+            'covered_competencies': covered_count,
+            'coverage_percentage': coverage_pct,
+            'competency_scores': dict(zip(required_comps, matched_scores)),
+            'weighted_score': job_score,
+            'unweighted_score': np.mean(matched_scores) if matched_scores else 0.0,
+            'block_weights_used': block_weights
+        }
+
+        job_results.append((job_id, job_title, job_score, details))
+
+    job_results.sort(key=lambda x: x[2], reverse=True)
+    return job_results
+
+def recommend_jobs(user_responses, competencies_df, job_skills_df, 
+                  job_weights_df, questions_df, model, 
+                  competency_embeddings, top_k=3):
+    """Pipeline complet de recommandation (version du notebook)"""
+    
+    # Step 1: Analyze responses
+    competency_scores = analyze_all_responses_weighted(
+        user_responses, questions_df, model, competency_embeddings
+    )
+
+    # Step 2: Compute block scores
+    block_scores = compute_block_scores(competency_scores, competencies_df)
+
+    # Step 3: Compute job scores
+    all_job_scores = compute_job_scores_weighted(
+        competency_scores, job_skills_df, job_weights_df, competencies_df
+    )
+
+    # Step 4: Get top K recommendations
+    top_jobs = all_job_scores[:top_k]
+
+    return {
+        'competency_scores': competency_scores,
+        'block_scores': block_scores,
+        'job_recommendations': [
+            {
+                'rank': i+1,
+                'job_id': job_id,
+                'job_title': job_title,
+                'match_score': score,
+                'details': details
+            }
+            for i, (job_id, job_title, score, details) in enumerate(top_jobs)
+        ],
+        'all_jobs': [
+            {
+                'job_id': job_id,
+                'job_title': job_title,
+                'match_score': score,
+                'details': details
+            }
+            for job_id, job_title, score, details in all_job_scores
+        ]
+    }
+
+def run_semantic_analysis(form_responses):
+    """Exécute l'analyse sémantique complète"""
     try:
         # Charger le modèle et les données
         model = load_model()
-        competencies, jobs = load_reference_data()
+        competencies, job_skills, job_weights, questions = load_reference_data()
+        competency_embeddings = precompute_competency_embeddings(model, competencies)
         
-        # Construire le texte de l'utilisateur
-        user_text = " ".join([
-            str(user_response_dict.get(field, ""))
-            for field in CANONICAL_TEXT_FIELDS
-            if pd.notna(user_response_dict.get(field)) and str(user_response_dict.get(field)).strip()
-        ])
+        # Convertir les réponses du formulaire en format QuestionID
+        user_responses = {}
+        for form_field, question_id in QUESTION_MAPPING.items():
+            if form_field in form_responses:
+                user_responses[question_id] = form_responses[form_field]
         
-        if not user_text.strip():
-            return None, "No text to analyze"
+        # Exécuter la recommandation
+        results = recommend_jobs(
+            user_responses,
+            competencies,
+            job_skills,
+            job_weights,
+            questions,
+            model,
+            competency_embeddings,
+            top_k=5
+        )
         
-        # Préparer les données de référence
-        cid2block = dict(zip(competencies["CompetencyID"], competencies["BlockName"]))
-        comp_ids = competencies["CompetencyID"].tolist()
-        comp_texts = competencies["CompetencyText"].astype(str).tolist()
-        
-        # Encoder
-        user_emb = model.encode([user_text], convert_to_tensor=True)
-        comp_emb = model.encode(comp_texts, convert_to_tensor=True)
-        
-        # Calculer les scores de compétences
-        if MODE == "avg":
-            S = util.cos_sim(user_emb, comp_emb)
-            comp_scores = S.squeeze(0).cpu().numpy()
-        else:
-            S = util.cos_sim(user_emb, comp_emb)
-            comp_scores = S.max(dim=0).values.cpu().numpy()
-        
-        # Table des compétences
-        comp_df = pd.DataFrame({
-            "CompetencyID": comp_ids,
-            "CompetencyText": comp_texts,
-            "BlockName": [cid2block[c] for c in comp_ids],
-            "Score": comp_scores
-        }).sort_values("Score", ascending=False).reset_index(drop=True)
-        
-        # Scores par bloc
-        block_scores = comp_df.groupby("BlockName")["Score"].mean().sort_values(ascending=False)
-        final_coverage = float(block_scores.mean())
-        
-        # Scoring des jobs
-        score_map = dict(zip(comp_df["CompetencyID"], comp_df["Score"]))
-        
-        def score_job_topk(required_ids, k=TOP_K):
-            vals = [score_map.get(cid, 0.0) for cid in required_ids if cid in score_map]
-            if not vals:
-                return 0.0
-            vals.sort(reverse=True)
-            return float(np.mean(vals[:k]))
-        
-        jobs_copy = jobs.copy()
-        jobs_copy["JobScore"] = jobs_copy["RequiredCompetencies"].apply(score_job_topk)
-        jobs_ranked = jobs_copy.sort_values("JobScore", ascending=False).reset_index(drop=True)
-        
-        # Préparer les résultats
-        top_job = jobs_ranked.iloc[0] if len(jobs_ranked) else None
-        
-        results = {
-            "final_coverage": final_coverage,
-            "top_job": top_job["JobTitle"] if top_job is not None else None,
-            "top_job_score": float(top_job["JobScore"]) if top_job is not None else None,
-            "top_competencies": comp_df.head(5)[["CompetencyID", "CompetencyText", "Score"]].to_dict(orient="records"),
-            "all_jobs": jobs_ranked.head(10)[["JobTitle", "JobScore"]].to_dict(orient="records"),
-            "block_scores": block_scores.to_dict()
-        }
+        # Calculer la couverture globale
+        final_coverage = np.mean(list(results['block_scores'].values()))
+        results['final_coverage'] = final_coverage
         
         return results, None
         
@@ -345,8 +514,8 @@ with st.form("skills_form"):
             if success:
                 st.success(f"✅ Thank you {first_name}! Your responses have been submitted successfully.")
                 
-                # 🔥 NOUVELLE PARTIE : Analyse sémantique
-                with st.spinner("🧠 Analyzing your profile and matching with job positions..."):
+                # Analyse sémantique avec le nouveau moteur
+                with st.spinner("🧠 Analyzing your profile with advanced semantic matching..."):
                     results, error = run_semantic_analysis(responses)
                 
                 if error:
@@ -359,25 +528,73 @@ with st.form("skills_form"):
                     st.markdown("---")
                     st.markdown("## 🎯 Your Results")
                     
-                    col1, col2 = st.columns(2)
+                    # Metrics principales
+                    col1, col2, col3 = st.columns(3)
                     with col1:
                         st.metric("Overall Coverage", f"{results['final_coverage']:.1%}")
                     with col2:
-                        st.metric("Top Job Match", results['top_job'], f"{results['top_job_score']:.1%}")
+                        top_job = results['job_recommendations'][0]
+                        st.metric("Top Job Match", top_job['job_title'])
+                    with col3:
+                        st.metric("Match Score", f"{top_job['match_score']:.1%}")
                     
+                    # Top 5 compétences
                     st.markdown("### 🏆 Top 5 Competencies")
-                    comp_df = pd.DataFrame(results['top_competencies'])
-                    comp_df['Score'] = comp_df['Score'].apply(lambda x: f"{x:.1%}")
-                    st.dataframe(comp_df, use_container_width=True)
+                    competencies, _, _, _ = load_reference_data()
                     
-                    st.markdown("### 💼 Recommended Jobs")
-                    jobs_df = pd.DataFrame(results['all_jobs'])
-                    jobs_df['JobScore'] = jobs_df['JobScore'].apply(lambda x: f"{x:.1%}")
-                    st.dataframe(jobs_df, use_container_width=True)
+                    top_5_comps = sorted(
+                        results['competency_scores'].items(), 
+                        key=lambda x: x[1], 
+                        reverse=True
+                    )[:5]
                     
+                    comp_data = []
+                    for comp_id, score in top_5_comps:
+                        comp_text = competencies[competencies['CompetencyID'] == comp_id]['CompetencyText'].values[0]
+                        block = competencies[competencies['CompetencyID'] == comp_id]['BlockName'].values[0]
+                        comp_data.append({
+                            'Competency': comp_text,
+                            'Block': block,
+                            'Score': f"{score:.1%}"
+                        })
+                    
+                    st.dataframe(pd.DataFrame(comp_data), use_container_width=True)
+                    
+                    # Jobs recommandés
+                    st.markdown("### 💼 Top 5 Recommended Jobs")
+                    jobs_data = []
+                    for job in results['job_recommendations']:
+                        jobs_data.append({
+                            'Rank': job['rank'],
+                            'Job Title': job['job_title'],
+                            'Match Score': f"{job['match_score']:.1%}",
+                            'Coverage': f"{job['details']['covered_competencies']}/{job['details']['required_competencies']} ({job['details']['coverage_percentage']:.0f}%)"
+                        })
+                    
+                    st.dataframe(pd.DataFrame(jobs_data), use_container_width=True)
+                    
+                    # Scores par bloc
                     st.markdown("### 📊 Competency Block Scores")
-                    block_df = pd.DataFrame(list(results['block_scores'].items()), columns=['Block', 'Score'])
-                    block_df['Score'] = block_df['Score'].apply(lambda x: f"{x:.1%}")
-                    st.dataframe(block_df, use_container_width=True)
+                    block_data = [
+                        {'Block': block, 'Average Score': f"{score:.1%}"}
+                        for block, score in sorted(results['block_scores'].items(), key=lambda x: x[1], reverse=True)
+                    ]
+                    st.dataframe(pd.DataFrame(block_data), use_container_width=True)
+                    
+                    # Détails du top job
+                    with st.expander("🔍 View detailed analysis for top match"):
+                        top_job = results['job_recommendations'][0]
+                        st.markdown(f"**{top_job['job_title']}**")
+                        st.write(f"- Match Score: {top_job['match_score']:.1%}")
+                        st.write(f"- Unweighted Score: {top_job['details']['unweighted_score']:.1%}")
+                        st.write(f"- Coverage: {top_job['details']['coverage_percentage']:.1f}%")
+                        
+                        st.markdown("**Top matching competencies:**")
+                        comp_scores = top_job['details']['competency_scores']
+                        top_3 = sorted(comp_scores.items(), key=lambda x: x[1], reverse=True)[:3]
+                        
+                        for comp_id, score in top_3:
+                            comp_text = competencies[competencies['CompetencyID'] == comp_id]['CompetencyText'].values[0]
+                            st.write(f"- {comp_text}: {score:.1%}")
             else:
                 st.error("❌ Failed to save responses to GitHub. Please try again or contact support.")
