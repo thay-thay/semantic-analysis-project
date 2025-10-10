@@ -1,36 +1,24 @@
 CompetencyID,CompetencyText,BlockID,BlockName
-C01,Data cleaning,1,Data Analysis
-C02,Data visualization,1,Data Analysis
-C03,Python programming,1,Data Analysis
-C04,SQL queries,1,Data Analysis
-C05,Dashboards,1,Data Analysis
-C06,Exploratory data analysis,1,Data Analysis
-C07,Statistics,1,Data Analysis
-C08,Model evaluation,2,Machine Learning
-C09,Classification,2,Machine Learning
-C10,Regression,2,Machine Learning
-C11,Cross-validation,2,Machine Learning
-C12,Hyperparameter tuning,2,Machine Learning
-C13,Neural networks,2,Machine Learning
-C14,Deep learning,2,Machine Learning
-C15,Text preprocessing,3,NLP
-C16,Tokenization,3,NLP
-C17,Lemmatization,3,NLP
-C18,Named entity recognition,3,NLP
-C19,Word embeddings,3,NLP
-C20,Transformers,3,NLP
-C21,Semantic similarity,3,NLP
-C22,Language models,3,NLP
-C23,Sentiment analysis,3,NLP
-C24,Text classification,3,NLP
-C25,Machine translation,3,NLP
-C26,Question answering,3,NLP
-C27,Chatbot development,3,NLP
-C28,Stakeholder communication,4,Project Management
-C29,Requirements gathering,4,Project Management
-C30,Data pipeline design,5,Data Engineering
-C31,ETL processes,5,Data Engineering
-C32,Database management,5,Data Engineering
-C33,Data modeling,5,Data Engineering
-C34,Cloud platforms,5,Data Engineering
-C35,Data governance,5,Data Engineering
+C01,Data cleaning and preprocessing,1,Core Data Skills
+C02,Data visualization and reporting,1,Core Data Skill
+C03,Statistical analysis,1,Core Data Skills
+C04,Exploratory data analysis,1,Core Data Skills
+C05,Python programming,2,Core Programming
+C06,SQL and databases,2,Core Programming
+C07,Machine learning fundamentals,3,Machine Learning
+C08,Model training and evaluation,3,Machine Learning
+C09,Feature engineering,3,Machine Learning
+C10,Hyperparameter optimization,3,Machine Learning
+C11,Deep learning and neural networks,3,Machine Learning
+C12,Text preprocessing and tokenization,4,Natural Language Processing
+C13,Language models and transformers,4,Natural Language Processing
+C14,Named entity recognition,4,Natural Language Processing
+C15,Sentiment analysis,4,Natural Language Processing
+C16,Text classification,4,Natural Language Processing
+C17,Data pipeline design,5,Data Engineering
+C18,ETL processes,5,Data Engineering
+C19,Cloud platforms and deployment,5,Data Engineering
+C20,Data modeling and architecture,5,Data Engineering
+C21,Business communication,6,Business Skills
+C22,Stakeholder management,6,Business Skills
+C23,Project management,6,Business Skills
