@@ -1,0 +1,31 @@
+JobID,JobTitle,BlockName,BlockWeight
+J01,Data Analyst,Core Data Skills,1.5
+J01,Data Analyst,Core Programming,1.2
+J01,Data Analyst,Machine Learning,0.8
+J01,Data Analyst,Natural Language Processing,0.3
+J01,Data Analyst,Data Engineering,0.5
+J01,Data Analyst,Business Skills,1.3
+J02,Machine Learning Engineer,Core Data Skills,1.0
+J02,Machine Learning Engineer,Core Programming,1.3
+J02,Machine Learning Engineer,Machine Learning,1.8
+J02,Machine Learning Engineer,Natural Language Processing,0.5
+J02,Machine Learning Engineer,Data Engineering,0.8
+J02,Machine Learning Engineer,Business Skills,0.7
+J03,Data Scientist,Core Data Skills,1.4
+J03,Data Scientist,Core Programming,1.3
+J03,Data Scientist,Machine Learning,1.5
+J03,Data Scientist,Natural Language Processing,1.2
+J03,Data Scientist,Data Engineering,0.8
+J03,Data Scientist,Business Skills,1.1
+J04,NLP Engineer,Core Data Skills,0.8
+J04,NLP Engineer,Core Programming,1.3
+J04,NLP Engineer,Machine Learning,1.2
+J04,NLP Engineer,Natural Language Processing,2.0
+J04,NLP Engineer,Data Engineering,0.6
+J04,NLP Engineer,Business Skills,0.7
+J05,Data Engineer,Core Data Skills,0.9
+J05,Data Engineer,Core Programming,1.5
+J05,Data Engineer,Machine Learning,0.5
+J05,Data Engineer,Natural Language Processing,0.3
+J05,Data Engineer,Data Engineering,2.0
+J05,Data Engineer,Business Skills,1.0
