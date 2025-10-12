@@ -27,8 +27,8 @@ from datetime import datetime
 from semantic_engine import run_semantic_analysis, load_reference_data
 
 # === Configuration ===
-GITHUB_REPO = "Amik24/semantic-analysis-project"
-FILE_PATH = "user_responses.csv"
+GITHUB_REPO = "thay-thay/semantic-analysis-project"
+FILE_PATH = "data/user_responses.csv"
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", "")
 
 
