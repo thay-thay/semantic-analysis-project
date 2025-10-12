@@ -598,7 +598,8 @@ def recommend_jobs(user_responses: Dict[str, Any],
     1. Analyzes all user responses to compute competency scores
     2. Computes block-level scores (category averages)
     3. Matches user profile against all jobs with weighted scoring
-    4. Returns top K recommendations with detailed metrics
+    4. Normalizes all scores at the END (to avoid breaking calculations)
+    5. Returns top K recommendations with detailed metrics
     
     Pipeline stages:
     
@@ -606,21 +607,23 @@ def recommend_jobs(user_responses: Dict[str, Any],
     - Processes each user answer (text or Likert)
     - Computes semantic similarity with all competencies
     - Applies question-level weights
-    - Produces: competency_scores dict
+    - Produces: raw_competency_scores dict (RAW, not normalized yet)
     
     STAGE 2: Block Aggregation
     - Groups competencies by category (blocks)
     - Computes average score per block
-    - Produces: block_scores dict
+    - Produces: raw_block_scores dict (RAW, not normalized yet)
     
     STAGE 3: Job Matching
     - For each job, applies job-specific block weights
     - Computes weighted average match score
     - Calculates coverage metrics
-    - Produces: Ranked list of all jobs
+    - Normalizes job scores inside the function
+    - Produces: Ranked list of all jobs (with normalized scores)
     
-    STAGE 4: Result Formatting
+    STAGE 4: Result Formatting & Normalization
     - Selects top K jobs
+    - Normalizes competency and block scores for display
     - Packages results with full details
     - Returns comprehensive dictionary
     
@@ -637,36 +640,59 @@ def recommend_jobs(user_responses: Dict[str, Any],
         
     Returns:
         dict: Comprehensive results dictionary containing:
-            - 'competency_scores': Individual competency scores (dict)
-            - 'block_scores': Average scores per competency block (dict)
+            - 'competency_scores': Normalized individual competency scores (dict)
+            - 'raw_competency_scores': Original competency scores before normalization (dict)
+            - 'block_scores': Normalized average scores per block (dict)
+            - 'raw_block_scores': Original block scores before normalization (dict)
             - 'job_recommendations': Top K jobs with full details (list)
             - 'all_jobs': All jobs ranked by match score (list)
     """
     
     # STAGE 1: Analyze all responses with weighted aggregation
-    competency_scores = analyze_all_responses_weighted(
+    # IMPORTANT: Keep RAW scores here, don't normalize yet!
+    raw_competency_scores = analyze_all_responses_weighted(
         user_responses, questions_df, model, competency_embeddings
     )
-
-    # STAGE 2: Compute block-level scores
-    raw_block_scores = compute_block_scores(competency_scores, competencies_df)
-
-    block_scores= {
-        block: normalize_score(score) 
-        for block, score in raw_block_scores.items()
-    }
-                      
+    
+    # STAGE 2: Compute block-level scores using RAW competency scores
+    # IMPORTANT: Use RAW scores to maintain calculation integrity
+    raw_block_scores = compute_block_scores(raw_competency_scores, competencies_df)
+    
     # STAGE 3: Compute job match scores with block weighting
+    # This function uses RAW competency scores and normalizes internally
     all_job_scores = compute_job_scores_weighted(
-        competency_scores, job_skills_df, job_weights_df, competencies_df
+        raw_competency_scores, job_skills_df, job_weights_df, competencies_df
     )
-
+    
     # STAGE 4: Format results - get top K recommendations
     top_jobs = all_job_scores[:top_k]
-
+    
+    # === NORMALIZE SCORES FOR DISPLAY (at the very end) ===
+    # Apply normalization ONLY now, after all calculations are complete
+    # This ensures internal calculations use raw scores while users see friendly percentages
+    
+    # Normalize individual competency scores (0.20 → 60%, 0.30 → 85%, etc.)
+    competency_scores_normalized = {
+        comp_id: normalize_score(score) 
+        for comp_id, score in raw_competency_scores.items()
+    }
+    
+    # Normalize block scores (0.25 → 70%, 0.28 → 80%, etc.)
+    block_scores_normalized = {
+        block_name: normalize_score(score) 
+        for block_name, score in raw_block_scores.items()
+    }
+    
     return {
-        'competency_scores': competency_scores,
-        'block_scores': block_scores,
+        # NORMALIZED scores for user display (friendly percentages)
+        'competency_scores': competency_scores_normalized,
+        'block_scores': block_scores_normalized,
+        
+        # RAW scores for internal analysis and debugging
+        'raw_competency_scores': raw_competency_scores,
+        'raw_block_scores': raw_block_scores,
+        
+        # Job recommendations (already have normalized scores from stage 3)
         'job_recommendations': [
             {
                 'rank': i+1,
@@ -687,8 +713,6 @@ def recommend_jobs(user_responses: Dict[str, Any],
             for job_id, job_title, score, details in all_job_scores
         ]
     }
-
-
 # ----------------------- Main Entry Point -------------------------------------
 
 def run_semantic_analysis(form_responses: Dict[str, Any]) -> Tuple[Dict[str, Any], str]:
