@@ -584,89 +584,74 @@ def compute_job_scores_weighted(competency_scores: Dict[str, float],
 
 # ----------------------- Main Recommendation Pipeline -------------------------
 
-def recommend_jobs(user_responses: Dict[str, Any], 
-                  competencies_df: pd.DataFrame, 
-                  job_skills_df: pd.DataFrame, 
-                  job_weights_df: pd.DataFrame, 
-                  questions_df: pd.DataFrame, 
-                  model: SentenceTransformer, 
-                  competency_embeddings: Dict[str, Any], 
-                  top_k: int = 3) -> Dict[str, Any]:
-    """Complete pipeline for job recommendation based on user responses.
+def recommend_jobs(user_responses, competencies_df, job_skills_df, 
+                  job_weights_df, questions_df, model, 
+                  competency_embeddings, top_k=3):
+    """
+    Execute the complete job recommendation pipeline.
     
-    This is the main orchestration function that coordinates the entire analysis:
-    1. Analyzes all user responses to compute competency scores
-    2. Computes block-level scores (category averages)
-    3. Matches user profile against all jobs with weighted scoring
-    4. Returns top K recommendations with detailed metrics
+    This is the main orchestration function that ties together all analysis steps:
+    1. Analyzes user responses to compute competency scores (with question weighting)
+    2. Aggregates competencies into block-level scores
+    3. Matches user profile against all jobs (with job-specific block weighting)
+    4. Returns ranked job recommendations with detailed metrics
     
-    Pipeline stages:
+    The pipeline uses a sophisticated weighting system at two levels:
+    - Question level: Technical questions weighted higher than opinions
+    - Job level: Each job values different skill blocks differently
     
-    STAGE 1: Response Analysis
-    - Processes each user answer (text or Likert)
-    - Computes semantic similarity with all competencies
-    - Applies question-level weights
-    - Produces: competency_scores dict
-    
-    STAGE 2: Block Aggregation
-    - Groups competencies by category (blocks)
-    - Computes average score per block
-    - Produces: block_scores dict
-    
-    STAGE 3: Job Matching
-    - For each job, applies job-specific block weights
-    - Computes weighted average match score
-    - Calculates coverage metrics
-    - Produces: Ranked list of all jobs
-    
-    STAGE 4: Result Formatting
-    - Selects top K jobs
-    - Packages results with full details
-    - Returns comprehensive dictionary
-    
-    Args:
+    Arguments:
         user_responses (dict): User's answers to all questions
-                              Format: {'Q01': 'answer', 'Q02': 'answer', ...}
-        competencies_df (pd.DataFrame): Competency reference data
-        job_skills_df (pd.DataFrame): Job-competency mappings
-        job_weights_df (pd.DataFrame): Block weights per job
-        questions_df (pd.DataFrame): Question metadata
-        model (SentenceTransformer): SBERT model for encoding
-        competency_embeddings (dict): Pre-computed competency embeddings
-        top_k (int, optional): Number of top jobs to return. Defaults to 3.
+                              Format: {'Q01': 'answer text', 'Q02': 'answer text', ...}
+        competencies_df (DataFrame): Competency reference data
+        job_skills_df (DataFrame): Job-to-competency mappings
+        job_weights_df (DataFrame): Block importance weights per job
+        questions_df (DataFrame): Question metadata
+        model (SentenceTransformer): SBERT model for text encoding
+        competency_embeddings (dict): Pre-computed embeddings for all competencies
+        top_k (int, optional): Number of top job recommendations to return. Defaults to 3.
         
     Returns:
         dict: Comprehensive results dictionary containing:
-            - 'competency_scores': Individual competency scores (dict)
-            - 'block_scores': Average scores per competency block (dict)
-            - 'job_recommendations': Top K jobs with full details (list)
-            - 'all_jobs': All jobs ranked by match score (list)
+            - 'competency_scores' (dict): Individual scores for each competency
+                                         Format: {comp_id: score}
+            - 'block_scores' (dict): Average scores for each competency block
+                                    Format: {block_name: avg_score}
+            - 'job_recommendations' (list): Top K jobs with full details
+                                           Each item contains: rank, job_id, job_title,
+                                           match_score, and detailed metrics
+            - 'all_jobs' (list): All jobs ranked by match score (for reference)
     """
     
-    # STAGE 1: Analyze all responses with weighted aggregation
+    # === Step 1: Analyze all user responses to compute competency scores ===
+    # This applies question-level weighting (ML/NLP questions count more)
+    # and aggregates responses across all questions to get a score for each competency
     competency_scores = analyze_all_responses_weighted(
         user_responses, questions_df, model, competency_embeddings
     )
 
-    # STAGE 2: Compute block-level scores
-    raw_block_scores = compute_block_scores(competency_scores, competencies_df)
+    # === Step 2: Compute block-level scores ===
+    # Groups competencies by category (e.g., 'Machine Learning', 'Data Engineering')
+    # and calculates average score for each block
+    block_scores = compute_block_scores(competency_scores, competencies_df)
 
-    block_scores= {
-        block: normalize_score(score) 
-        for block, score in raw_block_scores.items()
-    }
-                      
-    # STAGE 3: Compute job match scores with block weighting
+    # === Step 3: Score all jobs against user's competency profile ===
+    # Applies job-specific block weights (e.g., ML Engineer values ML skills more highly)
+    # and computes weighted match score for each job
     all_job_scores = compute_job_scores_weighted(
         competency_scores, job_skills_df, job_weights_df, competencies_df
     )
 
-    # STAGE 4: Format results - get top K recommendations
+    # === Step 4: Extract top K recommendations ===
+    # Jobs are already sorted by score (highest first) from compute_job_scores_weighted
     top_jobs = all_job_scores[:top_k]
 
+    # === Return comprehensive results ===
     return {
         'competency_scores': competency_scores,
         'block_scores': block_scores,
+        
+        # Format top K recommendations with rank numbers
         'job_recommendations': [
             {
                 'rank': i+1,
@@ -677,6 +662,8 @@ def recommend_jobs(user_responses: Dict[str, Any],
             }
             for i, (job_id, job_title, score, details) in enumerate(top_jobs)
         ],
+        
+        # All jobs for reference (if user wants to see beyond top K)
         'all_jobs': [
             {
                 'job_id': job_id,
@@ -687,7 +674,6 @@ def recommend_jobs(user_responses: Dict[str, Any],
             for job_id, job_title, score, details in all_job_scores
         ]
     }
-
 
 # ----------------------- Main Entry Point -------------------------------------
 
