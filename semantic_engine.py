@@ -67,7 +67,7 @@ from sentence_transformers import SentenceTransformer, util
 # Pretrained model used to compute sentence embeddings.
 # "all-mpnet-base-v2" = strong, general-purpose, good quality.
 # 768-dimensional embeddings, trained on 1B+ sentence pairs
-MODEL_NAME: str = "all-mpnet-base-v2"
+MODEL_NAME: str = "all-MiniLM-L6-v2"
 
 # Folder layout (relative paths so it works the same locally and in production)
 DATA_DIR = Path("data")
