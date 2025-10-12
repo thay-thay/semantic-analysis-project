@@ -75,8 +75,8 @@ DATA_DIR = Path("data")
 # === Score Normalization Parameters ===
 # Raw cosine similarity scores typically range from 0.0 to 0.4 for real user responses
 # We normalize these to a 0-100% scale for better user interpretation
-SCORE_MIN_THRESHOLD = 0.10  # Below this threshold → 0%
-SCORE_MAX_EXPECTED = 0.30   # At or above this → 100%
+SCORE_MIN_THRESHOLD = 0.0  # Below this threshold → 0%
+SCORE_MAX_EXPECTED = 0.35   # At or above this → 100%
 SCORE_SCALING_FACTOR = 1.0  # Additional multiplier (1.0 = no extra scaling)
 
 # Mapping des champs du formulaire vers les QuestionIDs
@@ -649,8 +649,9 @@ def recommend_jobs(user_responses: Dict[str, Any],
     )
 
     # STAGE 2: Compute block-level scores
-    block_scores = compute_block_scores(competency_scores, competencies_df)
+    raw_block_scores = compute_block_scores(competency_scores, competencies_df)
 
+    block_scores = normalize_score(raw_block_scores)
     # STAGE 3: Compute job match scores with block weighting
     all_job_scores = compute_job_scores_weighted(
         competency_scores, job_skills_df, job_weights_df, competencies_df
