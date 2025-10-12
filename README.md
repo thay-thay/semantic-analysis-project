@@ -17,7 +17,7 @@ and publishes updated results directly to the repository for visualization and f
 
 ## ⚙️ How It Works  
 
-### 🔁 Data Flow  
+### Data Flow  
 ```
 
 Streamlit App → pushes user_responses.csv
@@ -44,12 +44,12 @@ Streamlit App → pushes user_responses.csv
 
 ## 🧠 Model Design  
 
-### ✳️ Chosen Approach  
+### Chosen Approach  
 - **Model:** Sentence-BERT (`all-mpnet-base-v2`)  
 - **Similarity:** Cosine similarity  
 - **Aggregation:** Block-level → Job-level ranking  
 
-### 💡 Why `all-mpnet-base-v2`?  
+### Why `all-mpnet-base-v2`?  
 `all-mpnet-base-v2` provides **state-of-the-art performance** on semantic similarity tasks,  
 capturing **context, rephrasing, and nuanced meanings** far better than traditional models.
 
@@ -57,7 +57,7 @@ capturing **context, rephrasing, and nuanced meanings** far better than traditio
 |:-------|:--------|:---------------------------|
 | Synonym / rephrase handling | ❌ | ✅ |
 | Context understanding | ❌ | ✅ |
-| Computation time | ⚡ Fast | ⚡ Moderate |
+| Computation time | Fast | Moderate |
 | Accuracy | Medium | **Very High** |
 
 ---
@@ -67,12 +67,12 @@ capturing **context, rephrasing, and nuanced meanings** far better than traditio
 Whenever `user_responses.csv` or `semantic_engine.py` changes, **GitHub Actions** runs automatically.  
 
 ### Workflow Summary  
-1. 🧰 **Set up Python 3.10 environment**  
-2. ⚙️ **Install dependencies** from `requirements.txt`  
-3. 💻 **Run** the semantic engine (`semantic_engine.py`)  
-4. 📊 **Generate outputs** (competency, block, job, and summary files)  
-5. 📤 **Commit & push** results to the repo  
-6. 📦 **Upload artifacts** for backup or download  
+1.  **Set up Python 3.10 environment**  
+2.  **Install dependencies** from `requirements.txt`  
+3.  **Run** the semantic engine (`semantic_engine.py`)  
+4.  **Generate outputs** (competency, block, job, and summary files)  
+5.  **Commit & push** results to the repo  
+6.  **Upload artifacts** for backup or download  
 
 ### Produced Files  
 
@@ -184,17 +184,17 @@ qrcode[pil]
 
 ## 🌐 Live Streamlit App
 
-🔗 **Launch App:**
+ **Launch App:**
 👉 [semantic-analysis-project.streamlit.app](https://semantic-analysis-project.streamlit.app)
 
-📱 **Scan the QR code below to open:**
+ **Scan the QR code below to open:**
 
 <img width="210" height="210" alt="image" src="https://github.com/user-attachments/assets/825d6744-f0c3-4a23-8620-4b6cb8c60f35" />
 
 
 ---
 
-## 👥 Team
+## Team
 
 Ikram AMINE, Thayri BOUAICH, Victor CHEVALLIER, Corentin COFFRE, Vincent HASCOAT, Adeline EL BOUHOUTI, Geoffroy BOCCAN-LIAUDET.
 
@@ -202,10 +202,3 @@ Ikram AMINE, Thayri BOUAICH, Victor CHEVALLIER, Corentin COFFRE, Vincent HASCOAT
 **Mentor:** MALAEB Sarah
 
 ---
-
-## 🪪 License
-
-This project is for **academic and educational purposes only**.
-Commercial reproduction requires prior authorization.
-
-```
