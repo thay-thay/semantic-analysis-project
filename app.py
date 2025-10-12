@@ -10,7 +10,7 @@ from sentence_transformers import SentenceTransformer, util
 import plotly.express as px
 import plotly.graph_objects as go
 
-# importe ta page de visu si le module existe
+# Import visualisation if exist
 try:
     from viz_page import show_visualisations
     HAS_VIZ = True
@@ -113,12 +113,39 @@ QUESTION_MAPPING = {
 
 @st.cache_resource
 def load_model():
-    """Cache le modèle SBERT"""
+    """Load and cache the SBERT model for semantic analysis.
+    
+    This function uses Streamlit's cache_resource decorator to load the model
+    only once and reuse it across multiple requests, improving performance.
+    
+    Returns:
+        SentenceTransformer: Pre-trained SBERT model for encoding text into embeddings"""
+
+    # Load the sentence transformer model from Hugging Face
     return SentenceTransformer(MODEL_NAME)
 
 @st.cache_data
 def load_reference_data():
-    """Cache les données de référence"""
+    """Load and cache all reference CSV files needed for semantic analysis.
+    
+    This function loads four CSV files containing the reference data:
+    - Competencies: Skills/competencies with their IDs, texts, and category blocks
+    - Job Skills: Mapping between job positions and required competencies
+    - Job Weights: Importance weights for each competency block per job
+    - Questions: Survey questions with their types and competency mappings
+    
+    Data is cached to improve performance and avoid reloading files on every request.
+    
+    Arguments:
+        None
+    
+    Returns:
+        tuple: Four pandas DataFrames:
+            - competencies (DataFrame): Competency reference data
+            - job_skills (DataFrame): Job-to-competency mappings
+            - job_weights (DataFrame): Block importance weights per job
+            - questions (DataFrame): Question metadata and mappings
+    """
     competencies = pd.read_csv(DATA_DIR / "competencies.csv")
     job_skills = pd.read_csv(DATA_DIR / "job_skills.csv")
     job_weights = pd.read_csv(DATA_DIR / "job_weights.csv")
@@ -128,7 +155,22 @@ def load_reference_data():
 
 @st.cache_data
 def precompute_competency_embeddings(_model, competencies_df):
-    """Précompute les embeddings des compétences"""
+    """Precompute and cache vector embeddings for all competencies.
+    
+    This function generates semantic embeddings (vector representations) for
+    all competency texts using the SBERT model. Embeddings are computed once
+    and cached.
+    
+    Arguments:
+        _model (SentenceTransformer): The SBERT model used to encode text
+                                     (underscore prefix tells Streamlit not to hash it)
+        competencies_df (DataFrame): DataFrame containing CompetencyID and CompetencyText columns
+    
+    Returns:
+        dict: Dictionary mapping CompetencyID to its embedding tensor
+              Format: {comp_id: tensor([768 dimensions])}
+              Example: {'C01': tensor([0.12, -0.45, ...]), 'C02': tensor([...])}
+    """
     embeddings = {}
     for _, row in competencies_df.iterrows():
         comp_id = row['CompetencyID']
@@ -139,7 +181,25 @@ def precompute_competency_embeddings(_model, competencies_df):
 
 def analyze_single_response_semantic(question_id, user_response, response_type, 
                                      model, competency_embeddings):
-    """Analyse une réponse utilisateur (version du notebook)"""
+    """
+    Analyze a single user response and compute semantic similarity scores with all competencies.
+    
+    This function processes one answer from the user and calculates how relevant it is
+    to each competency in the system. For text responses, it uses cosine similarity
+    between embeddings. For Likert scale responses (1-5 ratings), it applies a simple formula.
+    
+    Arguments:
+        question_id (str): The ID of the question being answered  
+        user_response (str or int): The user's answer text or numeric rating
+        response_type (str): Type of response - either 'text' for open-ended or 'likert' for 1-5 scale
+        model (SentenceTransformer): The SBERT model used to encode user text
+        competency_embeddings (dict): Pre-computed embeddings for all competencies
+                                     Format: {comp_id: embedding_tensor}
+    
+    Returns:
+        dict: Dictionary mapping each CompetencyID to its similarity score
+              Format: {comp_id: score}
+    """
     
     # Handle Likert scale questions
     if response_type == 'likert':
@@ -153,11 +213,16 @@ def analyze_single_response_semantic(question_id, user_response, response_type,
     elif response_type == 'text':
         if not user_response or len(str(user_response).strip()) < 5:
             return {comp_id: 0.0 for comp_id in competency_embeddings.keys()}
-
+            
+        # Encode the user's text response into a vector embedding
+        # This converts text into a 768-dimensional vector
         user_embedding = model.encode(str(user_response), convert_to_tensor=True)
 
         comp_scores = {}
         for comp_id, comp_embedding in competency_embeddings.items():
+            # Calculate cosine similarity between the two vectors
+            # Cosine similarity measures the angle between vectors (-1 to 1)
+            # Higher values mean more semantic similarity
             semantic_sim = util.cos_sim(user_embedding, comp_embedding).item()
             semantic_sim = max(0.0, semantic_sim)
             comp_scores[comp_id] = semantic_sim
@@ -168,47 +233,81 @@ def analyze_single_response_semantic(question_id, user_response, response_type,
 
 def analyze_all_responses_weighted(user_responses, questions_df, model, 
                                    competency_embeddings, question_weights=None):
-    """Analyse toutes les réponses avec pondération (version du notebook)"""
+    """
+    Analyze all user responses with question weighting and compute aggregated competency scores.
+    
+    This function processes all answers from the user across all questions. It applies
+    importance weights to different questions (e.g., technical ML questions count more
+    than opinion questions) and computes a weighted average score for each competency.
+    
+    The weighting system reflects that:
+    - Technical questions are more important (weight 1.5)
+    - Data analysis questions are important (weight 1.2)
+    - Likert scale questions are less important (weight 0.7)
+    - Opinion questions have moderate importance (weight 0.7-1.0)
+    
+    Arguments:
+        user_responses (dict): Mapping of QuestionID to user's answer
+        questions_df (DataFrame): DataFrame containing question metadata 
+        model (SentenceTransformer): SBERT model for encoding text responses
+        competency_embeddings (dict): Pre-computed embeddings for all competencies
+        question_weights (dict, optional): Custom weights per question. If None, uses default weights
+    
+    Returns:
+        dict: Weighted average competency scores aggregated across all responses
+    """
     
     if question_weights is None:
         question_weights = {
-            'Q01': 1.0,
-            'Q02': 1.2,
-            'Q03': 1.5,
-            'Q04': 1.2,
-            'Q05': 1.5,
-            'Q06': 1.3,
-            'Q07': 1.0,
-            'Q08': 0.5,
-            'Q09': 0.5,
-            'Q10': 0.7
+            'Q01': 1.0,    # Programming experience - Standard
+            'Q02': 1.2,    # Data analysis approach - Important (core skill)
+            'Q03': 1.5,    # ML projects - Very important (practical experience)
+            'Q04': 1.2,    # ML problem solving - Important
+            'Q05': 1.5,    # NLP experience - Very important (specialized skill)    
+            'Q06': 1.3,    # Data pipelines - Important (engineering skill)    
+            'Q07': 1.0,    # Communication/reporting - Standard
+            'Q08': 0.7,    # Likert: Git skills - Less important (subjective rating)
+            'Q09': 0.7,    # Likert: Presentation skills - Less important (subjective rating)    
+            'Q10': 0.7    # Opinion: What makes a good DS - Moderate (philosophical)
         }
-    
-    all_comp_scores = {}
-    comp_weights = {}
 
+    # Initialize accumulators for weighted scoring
+    all_comp_scores = {} # sum of seighted score
+    comp_weights = {} # sum of weights
+
+    # Process each question-answer pair
     for question_id, answer in user_responses.items():
         question_row = questions_df[questions_df['QuestionID'] == question_id]
 
         if question_row.empty:
             continue
 
+        # Extract response type ('text' or 'likert') from metadata
         response_type = question_row.iloc[0]['Type']
+
+        # Get the importance weight for this question (default to 1.0 if not specified)
         q_weight = question_weights.get(question_id, 1.0)
 
+        # Analyze this single response to get competency similarity scores
         comp_scores = analyze_single_response_semantic(
             question_id, answer, response_type, model, competency_embeddings
         )
 
+        # Add weighted scores to the accumulators
         for comp_id, score in comp_scores.items():
             if comp_id not in all_comp_scores:
                 all_comp_scores[comp_id] = 0.0
                 comp_weights[comp_id] = 0.0
-            
+                
+            # Add: (score × question_weight) to total
             all_comp_scores[comp_id] += score * q_weight
+
+            # Add: question_weight to total weights (for computing average later)
             comp_weights[comp_id] += q_weight
-    
+            
+   
     # Compute weighted average
+    # Formula: weighted_average = sum(score × weight) / sum(weights)
     for comp_id in all_comp_scores:
         if comp_weights[comp_id] > 0:
             all_comp_scores[comp_id] /= comp_weights[comp_id]
@@ -218,10 +317,26 @@ def analyze_all_responses_weighted(user_responses, questions_df, model,
     return all_comp_scores
 
 def compute_block_scores(competency_scores, competencies_df):
-    """Calcule les scores par bloc (version du notebook)"""
+    """Compute average scores for each competency block.
+    
+    Competencies are grouped into blocks.
+    This function calculates the average score for each block based on individual 
+    competency scores within that block.
+    
+    Args:
+        competency_scores (dict): Individual competency scores
+                                 Format: {comp_id: score}
+        competencies_df (pd.DataFrame): DataFrame with competency metadata including BlockName
+        
+    Returns:
+        dict: Average score for each competency block
+              Format: {block_name: average_score}
+    """
+    # Initialize accumulators  
     block_scores = {}
     block_counts = {}
 
+    # Process each competency score
     for comp_id, score in competency_scores.items():
         comp_row = competencies_df[competencies_df['CompetencyID'] == comp_id]
 
@@ -232,10 +347,12 @@ def compute_block_scores(competency_scores, competencies_df):
         if block_name not in block_scores:
             block_scores[block_name] = 0.0
             block_counts[block_name] = 0
-        
+
+        # Add score and increment count for this block
         block_scores[block_name] += score
         block_counts[block_name] += 1
-    
+
+    # Calculate average score for each block
     for block in block_scores:
         if block_counts[block] > 0:
             block_scores[block] /= block_counts[block]
@@ -246,45 +363,76 @@ def compute_block_scores(competency_scores, competencies_df):
 
 def compute_job_scores_weighted(competency_scores, job_skills_df, 
                                job_weights_df, competencies_df):
-    """Calcule les scores des jobs avec pondération (version du notebook)"""
+    """Calculate weighted match scores for all jobs based on user's competency profile.
+    
+    This function computes how well a user matches each job by:
+    1. Looking at which competencies each job requires
+    2. Applying block-level weights 
+    3. Computing weighted average score and coverage metrics
+    
+    Args:
+        competency_scores (dict): User's scores for each competency
+        job_skills_df (pd.DataFrame): Mapping of jobs to required competencies
+        job_weights_df (pd.DataFrame): Block weights for each job
+        competencies_df (pd.DataFrame): Competency metadata with block assignments
+        
+    Returns:
+        list: List of tuples sorted by match score (descending)
+              Format: [(job_id, job_title, job_score, details_dict), ...]
+              details_dict contains: required/covered competencies, coverage %, 
+                                    competency scores, weighted/unweighted scores
+    """
     
     job_results = []
 
+    # Process each unique job
     for job_id in job_skills_df['JobID'].unique():
+        # Get all rows for this job (one row per required competency)
         job_rows = job_skills_df[job_skills_df['JobID'] == job_id]
         job_title = job_rows.iloc[0]['JobTitle']
         required_comps = job_rows['CompetencyID'].tolist()
 
+        # Get block weights for this specific job
         job_weight_rows = job_weights_df[job_weights_df['JobID'] == job_id]
         block_weights = dict(zip(job_weight_rows['BlockName'], job_weight_rows['BlockWeight']))
 
-        weighted_score = []
-        weights = []
-        matched_scores = []
+        # Initialize accumulators for scoring
+        weighted_score = []    # Scores multiplied by block weights
+        weights = []            # Block weights
+        matched_scores = []    # Raw scores for coverage calculation
 
+        # Score each required competency
         for comp_id in required_comps:
+            # Look up which block this competency belongs to
             comp_row = competencies_df[competencies_df['CompetencyID'] == comp_id]
             if comp_row.empty:
                 continue
-            
+
+            # Get block name and its weight for this job
             block_name = comp_row.iloc[0]['BlockName']
             block_weight = block_weights.get(block_name, 1.0)
 
+            # Get user's score for this competency
             score = competency_scores.get(comp_id, 0.0)
             matched_scores.append(score)
 
+            # Apply block weight to the score
             weighted_score.append(score * block_weight)
             weights.append(block_weight)
-        
+
+        # Calculate final weighted job score
         if sum(weights) > 0:
             job_score = sum(weighted_score) / sum(weights)
         else:
             job_score = 0.0
 
+        # Calculate coverage metrics
         total_required = len(required_comps)
+        # Count how many competencies are "covered" (score >= 0.22 threshold)
         covered_count = sum(1 for s in matched_scores if s >= 0.22)
         coverage_pct = (covered_count / total_required) * 100 if total_required > 0 else 0.0
 
+        # Compile detailed metrics for this job
         details = {
             'required_competencies': total_required,
             'covered_competencies': covered_count,
@@ -296,14 +444,40 @@ def compute_job_scores_weighted(competency_scores, job_skills_df,
         }
 
         job_results.append((job_id, job_title, job_score, details))
-
+        
+    # Sort jobs by weighted score (highest first)
     job_results.sort(key=lambda x: x[2], reverse=True)
     return job_results
 
 def recommend_jobs(user_responses, competencies_df, job_skills_df, 
                   job_weights_df, questions_df, model, 
                   competency_embeddings, top_k=3):
-    """Pipeline complet de recommandation (version du notebook)"""
+    """Complete pipeline for job recommendation based on user responses.
+    
+    This is the main orchestration function that:
+    1. Analyzes all user responses to compute competency scores
+    2. Computes block-level scores
+    3. Matches user profile against all jobs with weighted scoring
+    4. Returns top K recommendations with detailed metrics
+    
+    Args:
+        user_responses (dict): User's answers to all questions
+                              Format: {'Q01': 'answer', 'Q02': 'answer', ...}
+        competencies_df (pd.DataFrame): Competency reference data
+        job_skills_df (pd.DataFrame): Job-competency mappings
+        job_weights_df (pd.DataFrame): Block weights per job
+        questions_df (pd.DataFrame): Question metadata
+        model (SentenceTransformer): SBERT model for encoding
+        competency_embeddings (dict): Pre-computed competency embeddings
+        top_k (int, optional): Number of top jobs to return. Defaults to 3.
+        
+    Returns:
+        dict: Comprehensive results dictionary containing:
+            - 'competency_scores': Individual competency scores
+            - 'block_scores': Average scores per competency block
+            - 'job_recommendations': Top K jobs with full details
+            - 'all_jobs': All jobs ranked by match score
+    """
     
     # Step 1: Analyze responses
     competency_scores = analyze_all_responses_weighted(
@@ -346,7 +520,30 @@ def recommend_jobs(user_responses, competencies_df, job_skills_df,
     }
 
 def run_semantic_analysis(form_responses):
-    """Exécute l'analyse sémantique complète"""
+    """Execute the complete semantic analysis workflow on form responses.
+    
+    This is the main entry point for analyzing a user's form submission. It:
+    1. Loads all necessary models and reference data
+    2. Converts form responses to the internal format
+    3. Runs the job recommendation pipeline
+    4. Computes overall coverage metrics
+    
+    Args:
+        form_responses (dict): Raw form data from Streamlit
+                              Format: {'First_Name': 'John', 'Programming': 'I use Python...', ...}
+                              
+    Returns:
+        tuple: (results_dict, error_message)
+            - If successful: (results_dict, None)
+            - If error: (None, error_string)
+            
+            results_dict contains:
+                - 'competency_scores': Score for each competency
+                - 'block_scores': Score for each competency block
+                - 'job_recommendations': Top 5 job matches
+                - 'all_jobs': All jobs ranked
+                - 'final_coverage': Overall average coverage score
+    """
     try:
         # Charger le modèle et les données
         model = load_model()
@@ -381,6 +578,21 @@ def run_semantic_analysis(form_responses):
         return None, str(e)
 
 def append_to_github_csv(new_response):
+    """Append a new user response to the CSV file stored on GitHub.
+    
+    This function handles saving form responses to a GitHub repository by:
+    1. Fetching the existing CSV file from GitHub
+    2. Appending the new response
+    3. Committing the updated file back to GitHub
+    
+    Args:
+        new_response (dict): Dictionary containing all form data
+                            Format: {'Timestamp': '...', 'First_Name': '...', 'Programming': '...', ...}
+                            
+    Returns:
+        bool: True if successfully saved, False otherwise
+    """
+    
     if not GITHUB_TOKEN:
         st.error("❌ GitHub token not configured. Please add it to Streamlit secrets.")
         return False
@@ -681,4 +893,5 @@ with st.form("skills_form"):
 
             else:
                 st.error("❌ Failed to save responses to GitHub. Please try again or contact support.")
+
 
