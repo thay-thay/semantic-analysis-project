@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 import numpy as np
 from sentence_transformers import SentenceTransformer, util
+import plotly.express as px
+import plotly.graph_objects as go
 
 # importe ta page de visu si le module existe
 try:
@@ -520,6 +522,7 @@ with st.form("skills_form"):
                 
                 if error:
                     st.error(f"❌ Analysis failed: {error}")
+                    
                 elif results:
                     st.balloons()
                     st.success("✅ Analysis complete!")
@@ -538,50 +541,110 @@ with st.form("skills_form"):
                     with col3:
                         st.metric("Match Score", f"{top_job['match_score']:.1%}")
                     
-                    # Top 5 compétences
+                    # TOP 5 COMPETENCIES
                     st.markdown("### 🏆 Top 5 Competencies")
                     competencies, _, _, _ = load_reference_data()
                     
+                    # numeric list to build both the table and the chart
                     top_5_comps = sorted(
                         results['competency_scores'].items(), 
                         key=lambda x: x[1], 
                         reverse=True
                     )[:5]
                     
-                    comp_data = []
+                    # Table (formatted)
+                    comp_table_rows = []
                     for comp_id, score in top_5_comps:
                         comp_text = competencies[competencies['CompetencyID'] == comp_id]['CompetencyText'].values[0]
                         block = competencies[competencies['CompetencyID'] == comp_id]['BlockName'].values[0]
-                        comp_data.append({
+                        comp_table_rows.append({
                             'Competency': comp_text,
                             'Block': block,
                             'Score': f"{score:.1%}"
                         })
+                    comp_table_df = pd.DataFrame(comp_table_rows)
+                    st.dataframe(comp_table_df, use_container_width=True)
                     
-                    st.dataframe(pd.DataFrame(comp_data), use_container_width=True)
+                    # Chart (numeric)
+                    comp_chart_df = pd.DataFrame([{
+                        "CompetencyText": competencies.loc[competencies["CompetencyID"] == comp_id, "CompetencyText"].values[0],
+                        "Score": float(score)
+                    } for comp_id, score in top_5_comps])
+                    if not comp_chart_df.empty:
+                        fig_top = px.bar(
+                            comp_chart_df.sort_values("Score"),
+                            x="Score",
+                            y="CompetencyText",
+                            orientation="h",
+                            range_x=[0, 1],
+                            title=None,
+                            color="Score",
+                            color_continuous_scale="Blues"
+                        )
+                        fig_top.update_layout(coloraxis_showscale=False)
+                        st.plotly_chart(fig_top, use_container_width=True)
+                    else:
+                        st.info("No competency scores available for plotting.")
                     
-                    # Jobs recommandés
+                    # TOP 5 RECOMMENDED JOBS
                     st.markdown("### 💼 Top 5 Recommended Jobs")
-                    jobs_data = []
-                    for job in results['job_recommendations']:
-                        jobs_data.append({
+                    # Table (formatted)
+                    jobs_table_rows = []
+                    for job in results['job_recommendations'][:5]:
+                        jobs_table_rows.append({
                             'Rank': job['rank'],
                             'Job Title': job['job_title'],
                             'Match Score': f"{job['match_score']:.1%}",
                             'Coverage': f"{job['details']['covered_competencies']}/{job['details']['required_competencies']} ({job['details']['coverage_percentage']:.0f}%)"
                         })
+                    jobs_table_df = pd.DataFrame(jobs_table_rows)
+                    st.dataframe(jobs_table_df, use_container_width=True)
                     
-                    st.dataframe(pd.DataFrame(jobs_data), use_container_width=True)
+                    # Chart (numeric)
+                    jobs_chart_df = pd.DataFrame([{
+                        "JobTitle": job['job_title'],
+                        "Score": float(job['match_score'])
+                    } for job in results['job_recommendations'][:5]])
+                    if not jobs_chart_df.empty:
+                        jobs_chart_df["Score"] = jobs_chart_df["Score"].clip(0, 1)
+                        fig_jobs = px.bar(
+                            jobs_chart_df.sort_values("Score"),
+                            x="Score",
+                            y="JobTitle",
+                            orientation="h",
+                            range_x=[0, 1],
+                            title=None,
+                            color="Score",
+                            color_continuous_scale="Greens"
+                        )
+                        fig_jobs.update_layout(coloraxis_showscale=False)
+                        st.plotly_chart(fig_jobs, use_container_width=True)
+                    else:
+                        st.info("No job recommendations available for plotting.")
                     
-                    # Scores par bloc
+                    # BLOCK SCORES
                     st.markdown("### 📊 Competency Block Scores")
-                    block_data = [
-                        {'Block': block, 'Average Score': f"{score:.1%}"}
-                        for block, score in sorted(results['block_scores'].items(), key=lambda x: x[1], reverse=True)
-                    ]
-                    st.dataframe(pd.DataFrame(block_data), use_container_width=True)
+                    # Table (formatted)
+                    block_pairs_sorted = sorted(results['block_scores'].items(), key=lambda x: x[1], reverse=True)
+                    block_table_rows = [{'Block': block, 'Average Score': f"{score:.1%}"} for block, score in block_pairs_sorted]
+                    block_table_df = pd.DataFrame(block_table_rows)
+                    st.dataframe(block_table_df, use_container_width=True)
                     
-                    # Détails du top job
+                    # Chart (numeric radar)
+                    block_chart_df = pd.DataFrame([{"BlockName": block, "Score": float(score)} for block, score in block_pairs_sorted])
+                    if {"BlockName", "Score"}.issubset(block_chart_df.columns) and len(block_chart_df) >= 3:
+                        b = block_chart_df.copy()
+                        b["Score"] = b["Score"].clip(0, 1)
+                        fig_rad = px.line_polar(
+                            b, r="Score", theta="BlockName", line_close=True, range_r=[0, 1], title=None
+                        )
+                        fig_rad.update_traces(fill="toself", line_color="#1f77b4")
+                        fig_rad.update_layout(showlegend=False)
+                        st.plotly_chart(fig_rad, use_container_width=True)
+                    else:
+                        st.info("Not enough blocks to draw a radar (need at least 3) or missing columns.")
+                    
+                    # TOP JOB — DETAILS
                     with st.expander("🔍 View detailed analysis for top match"):
                         top_job = results['job_recommendations'][0]
                         st.markdown(f"**{top_job['job_title']}**")
@@ -596,5 +659,26 @@ with st.form("skills_form"):
                         for comp_id, score in top_3:
                             comp_text = competencies[competencies['CompetencyID'] == comp_id]['CompetencyText'].values[0]
                             st.write(f"- {comp_text}: {score:.1%}")
+                            
+                        # small bar chart for the top-3 inside the expander
+                        if top_3:
+                            exp_df = pd.DataFrame([{
+                                "CompetencyText": competencies.loc[competencies["CompetencyID"] == comp_id, "CompetencyText"].values[0],
+                                "Score": float(score)
+                            } for comp_id, score in top_3])
+                            fig_top3 = px.bar(
+                                exp_df.sort_values("Score"),
+                                x="Score",
+                                y="CompetencyText",
+                                orientation="h",
+                                range_x=[0, 1],
+                                title=None,
+                                color="Score",
+                                color_continuous_scale="Blues"
+                            )
+                            fig_top3.update_layout(coloraxis_showscale=False)
+                            st.plotly_chart(fig_top3, use_container_width=True)
+
             else:
                 st.error("❌ Failed to save responses to GitHub. Please try again or contact support.")
+
