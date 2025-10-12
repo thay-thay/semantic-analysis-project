@@ -1,6 +1,6 @@
 CompetencyID,CompetencyText,BlockID,BlockName
 C01,Data cleaning and preprocessing,1,Core Data Skills
-C02,Data visualization and reporting,1,Core Data Skill
+C02,Data visualization and reporting,1,Core Data Skills
 C03,Statistical analysis,1,Core Data Skills
 C04,Exploratory data analysis,1,Core Data Skills
 C05,Python programming,2,Core Programming
