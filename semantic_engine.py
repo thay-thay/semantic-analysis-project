@@ -651,7 +651,11 @@ def recommend_jobs(user_responses: Dict[str, Any],
     # STAGE 2: Compute block-level scores
     raw_block_scores = compute_block_scores(competency_scores, competencies_df)
 
-    block_scores = normalize_score(raw_block_scores)
+    block_scores= {
+        block: normalize_score(score) 
+        for block, score in raw_block_scores.items()
+    }
+                      
     # STAGE 3: Compute job match scores with block weighting
     all_job_scores = compute_job_scores_weighted(
         competency_scores, job_skills_df, job_weights_df, competencies_df
