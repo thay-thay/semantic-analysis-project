@@ -100,7 +100,7 @@ st.markdown("---")
 # === GitHub Configuration ===
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", "")
 GITHUB_REPO = "thay-thay/semantic-analysis-project"
-FILE_PATH = "user_responses.csv"
+FILE_PATH = "data/user_responses.csv"
 
 
 def append_to_github_csv(new_response):
@@ -432,3 +432,4 @@ with st.form("skills_form"):
 
             else:
                 st.error("❌ Failed to save responses to GitHub. Please try again or contact support.")
+
