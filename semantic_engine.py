@@ -73,10 +73,10 @@ MODEL_NAME: str = "all-mpnet-base-v2"
 DATA_DIR = Path("data")
 
 # === Score Normalization Parameters ===
-# Raw cosine similarity scores typically range from 0.0 to 0.4 for real user responses
+# Raw cosine similarity scores typically range from 0.0 to 0.28 for real user responses
 # We normalize these to a 0-100% scale for better user interpretation
 SCORE_MIN_THRESHOLD = 0.0  # Below this threshold → 0%
-SCORE_MAX_EXPECTED = 0.35   # At or above this → 100%
+SCORE_MAX_EXPECTED = 0.32   # At or above this → 100%
 SCORE_SCALING_FACTOR = 1.0  # Additional multiplier (1.0 = no extra scaling)
 
 # Mapping des champs du formulaire vers les QuestionIDs
