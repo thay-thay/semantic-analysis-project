@@ -97,6 +97,11 @@ FILE_PATH = "user_responses.csv"
 MODEL_NAME = "all-mpnet-base-v2"
 DATA_DIR = Path("data")
 
+# === Score Normalization Parameters ===
+SCORE_MIN_THRESHOLD = 0.10  # Minimum score to consider (below this = 0%)
+SCORE_MAX_EXPECTED = 0.30   # Maximum realistic score (this becomes 100%)
+SCORE_SCALING_FACTOR = 1.0  # Additional multiplier if needed (1.0 = no extra scaling)
+
 # Mapping des champs du formulaire vers les QuestionIDs
 QUESTION_MAPPING = {
     "Programming": "Q01",
@@ -110,6 +115,50 @@ QUESTION_MAPPING = {
     "Presentation_Level": "Q09",
     "Reflection": "Q10"
 }
+
+def normalize_score(raw_score, min_threshold=SCORE_MIN_THRESHOLD, 
+                    max_expected=SCORE_MAX_EXPECTED, 
+                    scaling_factor=SCORE_SCALING_FACTOR):
+    """
+    Normalize semantic similarity scores to a more user-friendly 0-1 scale.
+    
+    Raw cosine similarity scores from SBERT typically range from 0.0 to 0.4 for real
+    user responses. This function maps those scores to a 0-100% range where:
+    - Scores below min_threshold are mapped to 0%
+    - Scores at or above max_expected are mapped to 100%
+    - Scores in between are scaled linearly
+    
+    This makes the scores more intuitive for users. For example:
+    - Raw score of 0.30 → 75% (instead of 30%)
+    - Raw score of 0.25 → 50% (instead of 25%)
+    - Raw score of 0.15 → 0% (minimum threshold)
+    
+    Arguments:
+        raw_score (float): Original cosine similarity score (typically 0.0 to 0.4)
+        min_threshold (float): Minimum score to consider meaningful (default 0.15)
+        max_expected (float): Maximum realistic score, mapped to 1.0 (default 0.35)
+        scaling_factor (float): Additional multiplier if needed (default 1.0)
+    
+    Returns:
+        float: Normalized score between 0.0 and 1.0 (multiply by 100 for percentage)
+    """
+    # If score is below minimum threshold, return 0
+    if raw_score < min_threshold:
+        return 0.0
+    
+    # If score is at or above maximum expected, return 1.0 (capped at 100%)
+    if raw_score >= max_expected:
+        return 1.0
+    
+    # Linear scaling between min_threshold and max_expected
+    # Formula: (score - min) / (max - min)
+    normalized = (raw_score - min_threshold) / (max_expected - min_threshold)
+    
+    # Apply additional scaling factor if needed
+    normalized *= scaling_factor
+    
+    # Ensure result is between 0.0 and 1.0
+    return min(1.0, max(0.0, normalized))
 
 @st.cache_resource
 def load_model():
@@ -422,10 +471,11 @@ def compute_job_scores_weighted(competency_scores, job_skills_df,
 
         # Calculate final weighted job score
         if sum(weights) > 0:
-            job_score = sum(weighted_score) / sum(weights)
+            raw_job_score = sum(weighted_score) / sum(weights)
         else:
-            job_score = 0.0
+            raw_job_score = 0.0
 
+        job_score = normalize_score(raw_job_score)
         # Calculate coverage metrics
         total_required = len(required_comps)
         # Count how many competencies are "covered" (score >= 0.22 threshold)
@@ -893,5 +943,6 @@ with st.form("skills_form"):
 
             else:
                 st.error("❌ Failed to save responses to GitHub. Please try again or contact support.")
+
 
 
