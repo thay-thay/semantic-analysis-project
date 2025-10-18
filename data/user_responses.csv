@@ -9,3 +9,23 @@ Timestamp,First_Name,Last_Name,Programming,Data_Analysis,ML_Projects,ML_Problem,
 2025-10-12 17:27:19,Victor,Chevallier,Vizualization,Vizualization,Vizualization,Vizualization,Yes,Vizualization,Vizualization,3,3,Vizualization
 2025-10-12 17:35:20,Data engineering,Data engineering,Data engineering,Data engineering,Data engineering,Data engineering,yers,Data engineering,Data engineering,3,3,Data engineering
 2025-10-12 18:07:27,Victor ,Chevallier,I mostly use Python,I treat the raw data ,I used scikit learn,I perform ddata engineering,Yes,I implemented an ETL pipeline for data engineering,I create dataframes in pandas,3,4,Good communication
+2025-10-18 14:25:43,Thayri,Test,"I mostly use Python, SQL, and VBA for automation and data processing.
+ I also have experience with HTML, CSS, C, C++, Java, and C#, and I work with Git for version control.
+ I apply object-oriented programming (OOP) concepts and have collaborated with developers using Power BI, Snowflake, and Dynamics CRM.","I start by cleaning and structuring the data, handling missing values, and standardizing formats.
+ Then I perform exploratory data analysis (EDA) using Python libraries like pandas, matplotlib, and seaborn to understand distributions and correlations.
+ I compute summary statistics, detect outliers, and visualize patterns to prepare for further modeling or business interpretation.
+","I participated in a project that involved predicting sales trends using regression models.
+ I used scikit-learn to train models such as Linear Regression and Random Forest Regressor, evaluated them with cross-validation, and compared their performance using metrics like RMSE and R².
+ The goal was to forecast product demand to optimize stock levels and improve decision-making in retail operations.
+","I would begin by defining what “churn” means in the business context and collecting relevant customer behavior and transaction data.
+ Then I would perform feature engineering (e.g., purchase frequency, last interaction, satisfaction score), followed by data balancing if the classes are imbalanced.
+ I’d test models such as Logistic Regression, XGBoost, or Random Forest, evaluate them using ROC-AUC and F1-score, and finally interpret the results with SHAP values to understand key churn drivers.
+","Yes, I have explored Natural Language Processing for text classification and sentiment analysis.
+ I used tokenization, TF-IDF embeddings, and experimented with transformer models like BERT for extracting semantic meaning from text.
+ I also performed Named Entity Recognition (NER) to identify relevant entities in text documents.
+","I worked on automating data integration from multiple Excel templates using Python and VBA macros, transforming them into a standardized file ready for upload into HSales, the company’s sales system.
+ This pipeline handled data validation, cleaning, and transformation, significantly reducing manual errors and time spent on repetitive tasks.","I usually create interactive dashboards in Power BI or Excel, complemented by presentations to explain insights and recommendations.
+ I also prepare documentation on methodology and KPIs, and sometimes use SharePoint to share visualizations and ensure accessibility across teams.
+",4,5,"A strong Data Scientist or Engineer combines analytical thinking, business understanding, and technical mastery.
+ They should be able to translate business problems into data-driven solutions, communicate insights clearly to non-technical stakeholders, and maintain rigorous coding and data quality standards.
+ Collaboration and curiosity are also essential qualities."
